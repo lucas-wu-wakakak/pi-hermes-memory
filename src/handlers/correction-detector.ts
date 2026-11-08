@@ -28,14 +28,15 @@ import { execChildPrompt, resolveChildPiModel } from "./pi-child-process.js";
 import { resolveProjectName, resolveProjectStore, type ProjectNameRef, type ProjectStoreRef } from "../project-context.js";
 import { runDirectMemoryCompletion, usesDirectTransport } from "./review-memory-ops.js";
 
-/**
- * Extract the directive part from a correction message.
- * E.g., "no, use pnpm instead" -> "use pnpm instead"
- */
+/** Strip leading "you are wrong" markers so only the actionable part is saved. */
 function extractCorrectionDirective(text: string): string {
   // Remove common correction starters
   const cleaned = text
     .replace(/^(no|wrong|actually|stop|don'?t|that'?s not|I said|I told you)[,\.\s!]+/i, '')
+    .replace(/^(更正|纠正)(一下)?(上一条|上条|前面|刚才)?[，,。：: ]*/, '')
+    .replace(/^我说错(了|的)?[，,。：: ]*/, '')
+    .replace(/^你?(完全)?(理解|搞|弄)错(了|的)?[，,。：: ]*/, '')
+    .replace(/^不是[，,。：: ]*/, '')
     .replace(/^(please\s+)?/i, '')
     .trim();
   return cleaned || text;
@@ -62,9 +63,20 @@ function escapeRegexLiteral(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const CJK_CHAR = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
+
+/**
+ * CJK has no spaces, so \b never fires between a Han character and anything else.
+ * CJK directives are matched as plain substrings; everything else keeps word boundaries.
+ */
 function hasDirectiveWord(remainder: string, words: string[]): boolean {
   if (words.length === 0) return false;
-  const source = words.map(escapeRegexLiteral).join("|");
+  const cjk: string[] = [];
+  const latin: string[] = [];
+  for (const word of words) (CJK_CHAR.test(word) ? cjk : latin).push(word);
+  if (cjk.length > 0 && cjk.some((word) => remainder.includes(word))) return true;
+  if (latin.length === 0) return false;
+  const source = latin.map(escapeRegexLiteral).join("|");
   return new RegExp(`\\b(${source})\\b`, "i").test(remainder);
 }
 

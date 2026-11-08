@@ -357,6 +357,22 @@ export const CORRECTION_STRONG_PATTERNS: RegExp[] = [
   /we already discussed/i,
   /^please don'?t/i,
   /^that'?s not what I/i,
+  // CJK: restatement after a misread — signals the previous answer misread the requirement
+  /^我的意思(是|是说要)/,
+  /^我(说的|指的)是/,
+  // CJK: unambiguous meta-corrections ("correct the previous message", "I mis-spoke")
+  /(更正|纠正)(一下)?(上一条|上条|前面|刚才)/,
+  /我说错(了|的)?/,
+  /你(完全|又|还是)?(理解|搞|弄)错/,
+  // CJK: stop-the-agent commands — the user is halting work, which is a correction
+  /先?别(动工|动手|改动|动文件|继续)/,
+  /^先别(在|再)/,
+  // CJK: "not X, but Y" contrast construction
+  /不是要.{0,40}(而是|是要)/,
+  // CJK: repeated complaint that the previous fix did not land
+  /(还是|依然|仍然)(没有?(任何)?(变化|改动|改善|区别))/,
+  // CJK: bare disagreement opener
+  /(^|[，。；！？\s])不对([，,。！？；\s]|$)/,
 ];
 
 /** Weak patterns — only trigger if followed by a directive (verb or "the/that/this") */
@@ -365,6 +381,13 @@ export const CORRECTION_WEAK_PATTERNS: RegExp[] = [
   /^wrong[,\.\s!]/i,
   /^actually[,\.\s]/i,
   /^stop[,\.\s!]/i,
+  // CJK openers — same "correction, then a directive" shape as the English ones
+  /^不是/,
+  /^其实/,
+  /^太(长|啰嗦|多|复杂)/,
+  /^(精简|简单|简短|压缩)(一?点|下)?/,
+  /^(重新|重来|重写)/,
+  /^(换成|改成|改用)/,
 ];
 
 /** Negative patterns — suppress trigger even if a positive pattern matches */
@@ -375,10 +398,36 @@ export const CORRECTION_NEGATIVE_PATTERNS: RegExp[] = [
   /^no need/i,
   /^actually.{0,10}(looks? great|perfect|good|correct|right)/i,
   /^stop.{0,5}(there|here|for now)/i,
+  // CJK: declining further work and agreement both look like corrections but are not
+  /^先?不用了/,
+  /^算了/,
+  /^不用管/,
+  /^(可以了|没问题|挺好的?|好的|对的|这样就对)/,
+  /^(好像|可能是|估计)/,
 ];
 
 /** Directive words required after weak correction patterns */
 export const CORRECTION_DIRECTIVE_WORDS: string[] = [
+  // CJK directives — matched without word boundaries (see hasDirectiveWord)
+  "用",
+  "改成",
+  "换成",
+  "改用",
+  "直接",
+  "不要",
+  "别",
+  "删掉",
+  "删除",
+  "加上",
+  "保留",
+  "回退",
+  "重写",
+  "重新",
+  "精简",
+  "压缩",
+  "简化",
+  "确认",
+  "先",
   "use",
   "don't",
   "dont",
@@ -406,6 +455,11 @@ export const CORRECTION_DIRECTIVE_WORDS: string[] = [
 
 // ─── Correction save prompt ───
 export const CORRECTION_SAVE_PROMPT = `The user just corrected you. Review what went wrong and save the correction to persistent memory.
+
+First decide which kind of correction this is, because they are stored differently:
+- **Misread requirement** — the user restates what they meant (e.g. "我的意思是…", "我说的是…", "my point was…"). Record the corrected *reading* of the request, not a blanket style preference. Do not turn a one-off misunderstanding into a rule.
+- **Preference** — the user states how they want things done in general ("don't do X", "always use Y instead").
+- **Environment fact** — you got a fact about their setup wrong.
 
 Priority:
 1. User preference ("don't do X", "always use Y instead")

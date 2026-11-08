@@ -219,6 +219,100 @@ describe("isCorrection", () => {
       );
     });
   });
+
+  // ── CJK (Chinese) patterns ──
+  // Phrases taken from real Chinese session transcripts; \b never fires between
+  // Han characters, so CJK directives are matched as substrings instead.
+
+  describe("CJK strong patterns (always trigger)", () => {
+    it("matches '更正上一条'", () => {
+      assert.strictEqual(
+        isCorrection("更正上一条里的错误提醒：不要因为我说的'上下文快满了'而收缩工作范围"),
+        true,
+      );
+    });
+
+    it("matches '我说错了'", () => {
+      assert.strictEqual(isCorrection("我说错了，就是node +ELK"), true);
+    });
+
+    it("matches '你完全理解错了'", () => {
+      assert.strictEqual(
+        isCorrection("你完全理解错了, 不是要打开这个文档以后进行渲染"),
+        true,
+      );
+    });
+
+    it("matches stop-the-agent commands", () => {
+      assert.strictEqual(isCorrection("你先别改动文件，我们就单向的讨论"), true);
+      assert.strictEqual(isCorrection("先别动工，我们先讨论方案"), true);
+    });
+
+    it("matches 'not X, but Y' contrast construction", () => {
+      assert.strictEqual(
+        isCorrection("不是要打开 md 然后渲染，而是要先打开探索脉络和对话页面"),
+        true,
+      );
+    });
+
+    it("matches a repeated 'still not changed' complaint", () => {
+      assert.strictEqual(isCorrection("实时预览跟阅读模式，基本还是没有变化"), true);
+    });
+
+    it("matches bare disagreement opener", () => {
+      assert.strictEqual(isCorrection("不对，这个不是我要的"), true);
+    });
+
+    it("does not trigger on '先' without '别'", () => {
+      assert.strictEqual(isCorrection("你先看一下这个文件"), false);
+    });
+  });
+
+  describe("CJK weak patterns (need directive clause)", () => {
+    it("matches '太长了' followed by a CJK directive", () => {
+      assert.strictEqual(isCorrection("太长了，改成三句"), true);
+    });
+
+    it("does not match '太长了' alone", () => {
+      assert.strictEqual(isCorrection("太长了"), false);
+    });
+
+    it("matches '不是' followed by a CJK directive", () => {
+      assert.strictEqual(isCorrection("不是这样，你重新写"), true);
+    });
+
+    it("matches '我的意思是' even with no directive, because it restates a misread", () => {
+      assert.strictEqual(isCorrection("我的意思是，你别调研文件了"), true);
+      assert.strictEqual(isCorrection("我的意思是那个报价单的例子还能继续用"), true);
+    });
+
+    it("matches '我说的是' as a misread restatement", () => {
+      assert.strictEqual(isCorrection("我说的是plant里面可以选很多个"), true);
+    });
+
+    it("does not match '其实' when it introduces new work", () => {
+      assert.strictEqual(isCorrection("其实我想到一个新的方向"), false);
+    });
+  });
+
+  describe("CJK negative patterns (suppress false positives)", () => {
+    it("suppresses '先不用了'", () => {
+      assert.strictEqual(isCorrection("先不用了，我们的是只要等待approve了是吗?"), false);
+    });
+
+    it("suppresses agreement openers", () => {
+      assert.strictEqual(isCorrection("可以了，谢谢"), false);
+      assert.strictEqual(isCorrection("没问题，继续"), false);
+    });
+
+    it("suppresses hedged statements", () => {
+      assert.strictEqual(isCorrection("好像RPA那边也有类似问题"), false);
+    });
+
+    it("suppresses '不用管'", () => {
+      assert.strictEqual(isCorrection("不用管那个报错"), false);
+    });
+  });
 });
 
 // ─── Handler behavior tests ───
