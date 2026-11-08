@@ -277,8 +277,9 @@ describe("isCorrection", () => {
       assert.strictEqual(isCorrection("太长了"), false);
     });
 
-    it("matches '不是' followed by a CJK directive", () => {
-      assert.strictEqual(isCorrection("不是这样，你重新写"), true);
+    it("matches a '不是' opener even without a directive", () => {
+      assert.strictEqual(isCorrection("不是qoder的，就是在VS Code的Pi agent的插件对话记录里面"), true);
+      assert.strictEqual(isCorrection("不是这个意思, 已经用U盘拷贝了一份"), true);
     });
 
     it("matches '我的意思是' even with no directive, because it restates a misread", () => {
@@ -292,6 +293,12 @@ describe("isCorrection", () => {
 
     it("does not match '其实' when it introduces new work", () => {
       assert.strictEqual(isCorrection("其实我想到一个新的方向"), false);
+      assert.strictEqual(isCorrection("其实也就是总结的内容，或者说跟用户的交互"), false);
+    });
+
+    it("does not treat bare '用' as a directive", () => {
+      assert.strictEqual(isCorrection("太长了"), false);
+      assert.strictEqual(isCorrection("太长了, 用户那边也是这样"), false);
     });
   });
 

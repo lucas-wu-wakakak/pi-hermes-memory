@@ -360,6 +360,9 @@ export const CORRECTION_STRONG_PATTERNS: RegExp[] = [
   // CJK: restatement after a misread — signals the previous answer misread the requirement
   /^我的意思(是|是说要)/,
   /^我(说的|指的)是/,
+  // CJK: a message that opens with 不是 is disagreeing with the previous answer.
+  // In the sampled transcripts this opener was a correction 3 times out of 3.
+  /^不是/,
   // CJK: unambiguous meta-corrections ("correct the previous message", "I mis-spoke")
   /(更正|纠正)(一下)?(上一条|上条|前面|刚才)/,
   /我说错(了|的)?/,
@@ -381,9 +384,9 @@ export const CORRECTION_WEAK_PATTERNS: RegExp[] = [
   /^wrong[,\.\s!]/i,
   /^actually[,\.\s]/i,
   /^stop[,\.\s!]/i,
-  // CJK openers — same "correction, then a directive" shape as the English ones
-  /^不是/,
-  /^其实/,
+  // CJK openers — same "correction, then a directive" shape as the English ones.
+  // 其实 and 不是 are deliberately excluded here: 其实 introduces new context far more
+  // often than it corrects, and 不是 is promoted to a strong pattern (see above).
   /^太(长|啰嗦|多|复杂)/,
   /^(精简|简单|简短|压缩)(一?点|下)?/,
   /^(重新|重来|重写)/,
@@ -408,8 +411,9 @@ export const CORRECTION_NEGATIVE_PATTERNS: RegExp[] = [
 
 /** Directive words required after weak correction patterns */
 export const CORRECTION_DIRECTIVE_WORDS: string[] = [
-  // CJK directives — matched without word boundaries (see hasDirectiveWord)
-  "用",
+  // CJK directives — matched without word boundaries (see hasDirectiveWord).
+  // 用 is deliberately excluded: it appears inside 用户 / 应用 / 使用 / 不用, so it
+  // turns benign openers into false corrections. Precision matters more than recall.
   "改成",
   "换成",
   "改用",
